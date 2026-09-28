@@ -1,0 +1,26 @@
+# Copy to /home/cds/bin/noiloi.conf and chmod 600
+
+latitude = 54.989342
+longitude = 73.368212
+timezone = Asia/Omsk
+
+cronicle_url = http://localhost:3012
+cronicle_api_key = REPLACE_ME
+cronicle_category = general
+cronicle_plugin = shellplug
+cronicle_target = neon
+
+# Cloud cover %% at sunset hour at or above this => overcast offset
+cloud_threshold = 70
+# Minutes before sunset to start the color ramp
+offset_clear_min = 10
+offset_overcast_min = 40
+# Minutes before sunset to fetch weather / schedule steps
+weather_lead_min = 50
+
+yeelight_ips = 192.168.9.122 192.168.9.60 192.168.9.105
+razer_host = 127.0.0.1
+razer_port = 13000
+
+log_file = /home/cds/tmp/noiloi.log
+noiloi_bin = /home/cds/bin/noiloi

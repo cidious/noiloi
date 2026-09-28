@@ -1,0 +1,16 @@
+#!/home/cds/dev/heliolamp/.venv/bin/python
+"""Installed as /home/cds/bin/noiloi — uses project venv."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path("/home/cds/dev/heliolamp")
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from noiloi.cli import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

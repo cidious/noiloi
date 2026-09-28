@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if ! pgrep heliocron > /dev/null
+then
+    d=`date`
+    lat='55.00'
+    lon='73.24'
+    cd /home/cds/tmp
+    echo $d heliocron started >> /home/cds/tmp/heliolamp.log
+    sky=`php /home/cds/bin/weather_parser.php`
+    if [[ $sky == ovc* ]] ;
+	then
+	    before='-00:40'
+	else
+	    before='-00:10'
+	fi
+    /usr/local/bin/heliocron --latitude $lat --longitude $lon report | grep Sunset >> /home/cds/tmp/heliolamp.log
+    echo weather before sunset: $sky, advance $before >> /home/cds/tmp/heliolamp.log
+    HELIO="/usr/local/bin/heliocron --latitude $lat --longitude $lon wait --event sunset --offset $before && /home/cds/bin/turn-on-lights.sh"
+    echo $HELIO >> /home/cds/tmp/heliolamp.log
+    nohup bash -c "$HELIO" >> /home/cds/tmp/heliolamp.log 2>&1 &
+fi
+
+exit 0

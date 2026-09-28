@@ -1,0 +1,7 @@
+*.egg-info/
+.idea/
+noiloi.conf
+**/__pycache__/
+__pycache__/
+*.py[cod]
+.venv/
