@@ -22,6 +22,8 @@ def _day_prefix(day: datetime) -> str:
 
 
 def cmd_daily(cfg: Config) -> int:
+    cfg.require_location()
+    cfg.require_cronicle()
     tz = ZoneInfo(cfg.timezone)
     now = datetime.now(tz)
     sunset = today_sunset(cfg, on=now.date())
@@ -58,6 +60,8 @@ def cmd_daily(cfg: Config) -> int:
 
 
 def cmd_weather(cfg: Config, for_date=None, *, self_delete: bool = True) -> int:
+    cfg.require_location()
+    cfg.require_cronicle()
     tz = ZoneInfo(cfg.timezone)
     now = datetime.now(tz)
     day_date = for_date or now.date()
@@ -110,6 +114,7 @@ def cmd_weather(cfg: Config, for_date=None, *, self_delete: bool = True) -> int:
 
 
 def cmd_step(cfg: Config, temp: int, razer: str | None) -> int:
+    cfg.require_devices()
     log(cfg, f"step: ct={temp} razer={razer or '-'}")
     errors = set_yeelight_ct(cfg, temp)
     for err in errors:
@@ -135,6 +140,7 @@ def cmd_step(cfg: Config, temp: int, razer: str | None) -> int:
 
 def cmd_setup_daily(cfg: Config) -> int:
     """Create or replace the permanent noon noiloi-daily Cronicle event."""
+    cfg.require_cronicle()
     api = Cronicle(cfg)
     for prefix in ("noiloi-daily", "heliolamp-daily"):
         for row in api.find_by_title_prefix(prefix):
@@ -180,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--conf",
         default=None,
-        help="Path to noiloi.conf (default: NOILOI_CONF or /home/cds/bin/noiloi.conf)",
+        help="Path to noiloi.conf (default: NOILOI_CONF, ~/.config/noiloi/noiloi.conf, or ./noiloi.conf)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

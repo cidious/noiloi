@@ -1,16 +1,59 @@
-#!/home/cds/dev/heliolamp/.venv/bin/python
-"""Installed as /home/cds/bin/noiloi — uses project venv."""
+#!/usr/bin/env python3
+"""Portable entrypoint: works from scripts/ in a checkout or as an installed command."""
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
-ROOT = Path("/home/cds/dev/heliolamp")
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
-from noiloi.cli import main
+def find_repo_root() -> Path | None:
+    env = os.environ.get("NOILOI_ROOT", "").strip()
+    if env:
+        root = Path(env).expanduser().resolve()
+        if (root / "noiloi" / "__init__.py").is_file():
+            return root
+
+    here = Path(__file__).resolve().parent
+    # Typical layout: <repo>/scripts/noiloi
+    candidate = here.parent
+    if (candidate / "noiloi" / "__init__.py").is_file():
+        return candidate
+
+    # Symlink to scripts/noiloi: resolve once more after following links
+    real = Path(__file__).resolve()
+    candidate = real.parent.parent
+    if (candidate / "noiloi" / "__init__.py").is_file():
+        return candidate
+
+    return None
+
+
+ROOT = find_repo_root()
+if ROOT is not None:
+    venv_dir = (ROOT / ".venv").resolve()
+    venv_python = ROOT / ".venv" / "bin" / "python"
+    in_project_venv = Path(sys.prefix).resolve() == venv_dir
+    if (
+        venv_python.is_file()
+        and not in_project_venv
+        and os.environ.get("NOILOI_SKIP_VENV_REEXEC") != "1"
+    ):
+        os.execv(str(venv_python), [str(venv_python), str(Path(__file__).resolve()), *sys.argv[1:]])
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+
+try:
+    from noiloi.cli import main
+except ModuleNotFoundError as exc:
+    hint = (
+        "Install with: pip install -e <repo> "
+        "or symlink scripts/noiloi onto PATH, "
+        "or set NOILOI_ROOT to the checkout."
+    )
+    print(f"error: cannot import noiloi ({exc}). {hint}", file=sys.stderr)
+    raise SystemExit(1) from exc
 
 if __name__ == "__main__":
     raise SystemExit(main())

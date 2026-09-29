@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noiloi"
+version = "1.0.0"
+description = "Sunset-driven Yeelight and Razer lighting via Cronicle"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "astral>=3.2,<4",
+]
+
+[project.scripts]
+noiloi = "noiloi.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["noiloi*"]

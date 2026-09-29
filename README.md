@@ -31,17 +31,22 @@ noon ──► daily ──► weather@sunset−50m ──► steps@start+N×15m
 git clone <repo-url> noiloi
 cd noiloi
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+source .venv/bin/activate
+pip install -e .
 
-cp noiloi.conf.example noiloi.conf   # or path of your choice
-chmod 600 noiloi.conf
-# edit: coordinates, timezone, Cronicle URL + API key, yeelight IPs, noiloi_bin
-
-# Point scripts/noiloi at this checkout’s .venv / root, then:
-install -m 755 scripts/noiloi /usr/local/bin/noiloi
+mkdir -p ~/.config/noiloi
+cp noiloi.conf.example ~/.config/noiloi/noiloi.conf
+chmod 600 ~/.config/noiloi/noiloi.conf
+# edit: coordinates, timezone, Cronicle URL + API key, yeelight IPs, cronicle_target
 ```
 
-Set `NOILOI_CONF` if the config is not at `/home/cds/bin/noiloi.conf` or `./noiloi.conf`.
+Alternatively, without packaging, symlink the portable wrapper (keeps the checkout discoverable):
+
+```bash
+ln -sf "$(pwd)/scripts/noiloi" ~/.local/bin/noiloi
+```
+
+Config search order: `NOILOI_CONF`, `~/.config/noiloi/noiloi.conf`, `<repo>/noiloi.conf`, `./noiloi.conf`. Set `NOILOI_ROOT` if the wrapper is copied away from the repo and you are not using `pip install -e .`.
 
 Register the permanent noon job:
 
@@ -53,7 +58,7 @@ Or create a Cronicle Shell event titled `noiloi-daily` that runs daily at `12:00
 
 ```sh
 #!/bin/sh
-exec /path/to/noiloi daily
+exec noiloi daily
 ```
 
 ## Configuration
@@ -62,14 +67,15 @@ See [`noiloi.conf.example`](noiloi.conf.example). Important keys:
 
 | Key | Meaning |
 |-----|---------|
-| `latitude` / `longitude` / `timezone` | Observer for astral + Open-Meteo |
+| `latitude` / `longitude` / `timezone` | Observer for astral + Open-Meteo (required) |
 | `cronicle_url` / `cronicle_api_key` | Cronicle REST API |
-| `cronicle_category` / `plugin` / `target` | Must match your Cronicle setup |
+| `cronicle_category` / `plugin` / `target` | Must match your Cronicle setup (`target` required) |
 | `cloud_threshold` | Cloud cover % → overcast (default `70`) |
 | `offset_clear_min` / `offset_overcast_min` | Minutes before sunset to start |
 | `weather_lead_min` | When to fetch weather (default `50`) |
-| `yeelight_ips` | Space-separated bulb IPs |
-| `noiloi_bin` | Absolute path Cronicle scripts should `exec` |
+| `yeelight_ips` | Space-separated bulb IPs (required for `step`) |
+| `noiloi_bin` | Optional absolute path Cronicle scripts should `exec`; defaults to the running executable |
+| `log_file` | Optional; defaults to `~/.local/state/noiloi/noiloi.log` |
 
 Do not commit `noiloi.conf` (API keys). It is gitignored.
 
@@ -81,8 +87,6 @@ noiloi weather        # fetch clouds, schedule color steps, self-delete
 noiloi step 4100 a34410   # one CT (+ optional Razer hex)
 noiloi setup-daily    # create/replace permanent noon Cronicle event
 ```
-
-Logs append to the path in `log_file` (default `/home/cds/tmp/noiloi.log`).
 
 ## Color ramp
 
@@ -108,7 +112,7 @@ noiloi/
   cronicle.py    # REST client
   devices.py     # Yeelight + Razer TCP
   cli.py         # entrypoint commands
-scripts/noiloi
+scripts/noiloi   # portable entrypoint (repo-relative)
 noiloi.conf.example
 requirements.txt
 dirtyhack/       # legacy bash/PHP (not used by the new path)

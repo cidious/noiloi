@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import os
+import shutil
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-
-DEFAULT_CONF_PATHS = (
-    Path(os.environ.get("NOILOI_CONF", "")),
-    Path("/home/cds/bin/noiloi.conf"),
-    Path(__file__).resolve().parent.parent / "noiloi.conf",
-)
 
 # Matches dirtyhack/turn-on-lights.sh
 COLOR_STEPS: list[tuple[int, str | None]] = [
@@ -26,16 +22,58 @@ COLOR_STEPS: list[tuple[int, str | None]] = [
 ]
 
 
+def _xdg_config_home() -> Path:
+    raw = os.environ.get("XDG_CONFIG_HOME", "").strip()
+    return Path(raw) if raw else Path.home() / ".config"
+
+
+def _xdg_state_home() -> Path:
+    raw = os.environ.get("XDG_STATE_HOME", "").strip()
+    return Path(raw) if raw else Path.home() / ".local" / "state"
+
+
+def default_conf_paths() -> tuple[Path, ...]:
+    paths: list[Path] = []
+    env = os.environ.get("NOILOI_CONF", "").strip()
+    if env:
+        paths.append(Path(env).expanduser())
+    paths.append(_xdg_config_home() / "noiloi" / "noiloi.conf")
+    paths.append(Path(__file__).resolve().parent.parent / "noiloi.conf")
+    cwd_conf = Path.cwd() / "noiloi.conf"
+    if cwd_conf.resolve() not in {p.resolve() for p in paths}:
+        paths.append(cwd_conf)
+    return tuple(paths)
+
+
+def default_log_file() -> str:
+    return str(_xdg_state_home() / "noiloi" / "noiloi.log")
+
+
+def default_noiloi_bin() -> str:
+    argv0 = Path(sys.argv[0]).expanduser()
+    try:
+        if argv0.exists():
+            return str(argv0.resolve())
+    except OSError:
+        pass
+    found = shutil.which("noiloi")
+    return found or "noiloi"
+
+
+def expand_path(value: str) -> str:
+    return str(Path(value).expanduser()) if value else value
+
+
 @dataclass
 class Config:
-    latitude: float = 54.989342
-    longitude: float = 73.368212
-    timezone: str = "Asia/Omsk"
+    latitude: float | None = None
+    longitude: float | None = None
+    timezone: str = "UTC"
     cronicle_url: str = "http://localhost:3012"
     cronicle_api_key: str = ""
     cronicle_category: str = "general"
     cronicle_plugin: str = "shellplug"
-    cronicle_target: str = "neon"
+    cronicle_target: str = ""
     cloud_threshold: int = 70
     offset_clear_min: int = 10
     offset_overcast_min: int = 40
@@ -43,9 +81,25 @@ class Config:
     yeelight_ips: list[str] = field(default_factory=list)
     razer_host: str = "127.0.0.1"
     razer_port: int = 13000
-    log_file: str = "/home/cds/tmp/noiloi.log"
-    noiloi_bin: str = "/home/cds/bin/noiloi"
+    log_file: str = ""
+    noiloi_bin: str = ""
     step_interval_min: int = 15
+
+    def require_location(self) -> None:
+        if self.latitude is None or self.longitude is None:
+            raise ValueError("latitude and longitude must be set in noiloi.conf")
+        if not self.timezone:
+            raise ValueError("timezone must be set in noiloi.conf")
+
+    def require_cronicle(self) -> None:
+        if not self.cronicle_api_key or self.cronicle_api_key == "REPLACE_ME":
+            raise ValueError("cronicle_api_key must be set in noiloi.conf")
+        if not self.cronicle_target:
+            raise ValueError("cronicle_target must be set in noiloi.conf")
+
+    def require_devices(self) -> None:
+        if not self.yeelight_ips:
+            raise ValueError("yeelight_ips must be set in noiloi.conf")
 
 
 def _parse_value(raw: str) -> str:
@@ -55,14 +109,15 @@ def _parse_value(raw: str) -> str:
 def load_config(path: Path | None = None) -> Config:
     conf_path: Path | None = path
     if conf_path is None:
-        for candidate in DEFAULT_CONF_PATHS:
+        for candidate in default_conf_paths():
             if candidate and candidate.is_file():
                 conf_path = candidate
                 break
 
     cfg = Config()
     if conf_path is None:
-        cfg.yeelight_ips = ["192.168.9.122", "192.168.9.60", "192.168.9.105"]
+        cfg.log_file = default_log_file()
+        cfg.noiloi_bin = default_noiloi_bin()
         return cfg
 
     for line in conf_path.read_text(encoding="utf-8").splitlines():
@@ -103,12 +158,14 @@ def load_config(path: Path | None = None) -> Config:
         elif key == "razer_port":
             cfg.razer_port = int(value)
         elif key == "log_file":
-            cfg.log_file = value
+            cfg.log_file = expand_path(value)
         elif key in ("noiloi_bin", "heliolamp_bin"):
-            cfg.noiloi_bin = value
+            cfg.noiloi_bin = expand_path(value)
         elif key == "step_interval_min":
             cfg.step_interval_min = int(value)
 
-    if not cfg.yeelight_ips:
-        cfg.yeelight_ips = ["192.168.9.122", "192.168.9.60", "192.168.9.105"]
+    if not cfg.log_file:
+        cfg.log_file = default_log_file()
+    if not cfg.noiloi_bin:
+        cfg.noiloi_bin = default_noiloi_bin()
     return cfg

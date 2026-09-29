@@ -20,6 +20,8 @@ def round_to_minute(dt: datetime) -> datetime:
 
 
 def today_sunset(cfg: Config, on: date | None = None) -> datetime:
+    if cfg.latitude is None or cfg.longitude is None:
+        raise ValueError("latitude and longitude must be set in noiloi.conf")
     tz = ZoneInfo(cfg.timezone)
     day = on or datetime.now(tz).date()
     loc = LocationInfo("local", "", cfg.timezone, cfg.latitude, cfg.longitude)

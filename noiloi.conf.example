@@ -1,4 +1,5 @@
-# Copy to /home/cds/bin/noiloi.conf and chmod 600
+# Copy to ~/.config/noiloi/noiloi.conf (or set NOILOI_CONF) and chmod 600.
+# Paths may use ~ ; leave noiloi_bin empty to use the running executable.
 
 latitude = 54.989342
 longitude = 73.368212
@@ -22,5 +23,5 @@ yeelight_ips = 192.168.9.122 192.168.9.60 192.168.9.105
 razer_host = 127.0.0.1
 razer_port = 13000
 
-log_file = /home/cds/tmp/noiloi.log
-noiloi_bin = /home/cds/bin/noiloi
+log_file = ~/.local/state/noiloi/noiloi.log
+# noiloi_bin =
