@@ -76,6 +76,7 @@ See [`noiloi.conf.example`](noiloi.conf.example). Important keys:
 | `yeelight_ips` | Space-separated bulb IPs (required for `step`) |
 | `noiloi_bin` | Optional absolute path Cronicle scripts should `exec`; defaults to the running executable |
 | `log_file` | Optional; defaults to `~/.local/state/noiloi/noiloi.log` |
+| `off_on_sleep` / `off_on_shutdown` / `off_razer` | Lamp-off hooks for sleep/session exit (see below) |
 
 Do not commit `noiloi.conf` (API keys). It is gitignored.
 
@@ -85,8 +86,29 @@ Do not commit `noiloi.conf` (API keys). It is gitignored.
 noiloi daily          # schedule today’s weather one-shot
 noiloi weather        # fetch clouds, schedule color steps, self-delete
 noiloi step 4100 a34410   # one CT (+ optional Razer hex)
+noiloi off            # turn Yeelight off (and Razer to black if enabled)
 noiloi setup-daily    # create/replace permanent noon Cronicle event
+noiloi setup-power    # install systemd --user sleep/shutdown off hooks
 ```
+
+### Sleep / shutdown off
+
+Conf keys (defaults on):
+
+| Key | Meaning |
+|-----|---------|
+| `off_on_sleep` | `1`/`0` — run `noiloi off` before suspend (`sleep.target`) |
+| `off_on_shutdown` | `1`/`0` — run `noiloi off` on session exit (`exit.target`) |
+| `off_razer` | `1`/`0` — also set Razer backlight to `000000` |
+
+Then:
+
+```bash
+noiloi setup-power
+systemctl --user daemon-reload   # if needed
+```
+
+This writes `~/.config/systemd/user/noiloi-sleep.service` and `noiloi-shutdown.service`. Set a key to `0` and re-run `setup-power` to disable/remove that hook. Ensure a user systemd session is lingering or you are logged in graphically so `--user` units run on sleep.
 
 ## Color ramp
 

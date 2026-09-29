@@ -11,8 +11,9 @@ from zoneinfo import ZoneInfo
 
 from .config import COLOR_STEPS, Config, load_config
 from .cronicle import Cronicle, CronicleError
-from .devices import set_razer_color, set_yeelight_ct
+from .devices import set_razer_color, set_yeelight_ct, yeelight_off
 from .logutil import log
+from .power import log_setup_actions, setup_power_hooks
 from .sun import cronicle_timing, today_sunset
 from .weather import fetch_cloud_cover, start_offset_minutes
 
@@ -138,6 +139,31 @@ def cmd_step(cfg: Config, temp: int, razer: str | None) -> int:
     return 0
 
 
+def cmd_off(cfg: Config) -> int:
+    cfg.require_devices()
+    log(cfg, "off: powering down lamps")
+    errors = yeelight_off(cfg)
+    for err in errors:
+        log(cfg, f"off: yeelight {err}")
+    if cfg.off_razer:
+        try:
+            set_razer_color(cfg, "000000")
+        except OSError as exc:
+            log(cfg, f"off: razer error: {exc}")
+    return 0 if not errors else 1
+
+
+def cmd_setup_power(cfg: Config) -> int:
+    actions = setup_power_hooks(cfg)
+    log_setup_actions(cfg, actions)
+    log(
+        cfg,
+        f"setup-power: off_on_sleep={int(cfg.off_on_sleep)} "
+        f"off_on_shutdown={int(cfg.off_on_shutdown)} bin={cfg.noiloi_bin}",
+    )
+    return 0
+
+
 def cmd_setup_daily(cfg: Config) -> int:
     """Create or replace the permanent noon noiloi-daily Cronicle event."""
     cfg.require_cronicle()
@@ -195,6 +221,11 @@ def build_parser() -> argparse.ArgumentParser:
     step = sub.add_parser("step", help="Apply one Yeelight/Razer color step")
     step.add_argument("temp", type=int, help="Yeelight color temperature Kelvin")
     step.add_argument("razer", nargs="?", default=None, help="Optional Razer hex color")
+    sub.add_parser("off", help="Turn off Yeelight lamps (and optionally Razer)")
+    sub.add_parser(
+        "setup-power",
+        help="Install/remove systemd --user hooks for sleep/shutdown lamp off",
+    )
     sub.add_parser("setup-daily", help="Create permanent Cronicle noiloi-daily event")
     return parser
 
@@ -211,6 +242,10 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_weather(cfg)
         if args.command == "step":
             return cmd_step(cfg, args.temp, args.razer)
+        if args.command == "off":
+            return cmd_off(cfg)
+        if args.command == "setup-power":
+            return cmd_setup_power(cfg)
         if args.command == "setup-daily":
             return cmd_setup_daily(cfg)
     except CronicleError as exc:

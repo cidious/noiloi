@@ -44,6 +44,21 @@ def set_yeelight_ct(cfg: Config, temp: int, ips: Iterable[str] | None = None) ->
     return errors
 
 
+def yeelight_off(cfg: Config, ips: Iterable[str] | None = None) -> list[str]:
+    """Power off Yeelight bulbs. Returns list of errors (empty if all ok)."""
+    errors: list[str] = []
+    targets = list(ips if ips is not None else cfg.yeelight_ips)
+    for ip in targets:
+        if not yeelight_reachable(ip):
+            errors.append(f"{ip} not available")
+            continue
+        try:
+            _yeelight_send(ip, "set_power", ["off", "smooth", 200])
+        except OSError as exc:
+            errors.append(f"{ip}: {exc}")
+    return errors
+
+
 def set_razer_color(cfg: Config, hex_color: str) -> None:
     color = hex_color.lstrip("#")
     with socket.create_connection((cfg.razer_host, cfg.razer_port), timeout=3) as sock:

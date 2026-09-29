@@ -84,6 +84,9 @@ class Config:
     log_file: str = ""
     noiloi_bin: str = ""
     step_interval_min: int = 15
+    off_on_sleep: bool = True
+    off_on_shutdown: bool = True
+    off_razer: bool = True
 
     def require_location(self) -> None:
         if self.latitude is None or self.longitude is None:
@@ -104,6 +107,10 @@ class Config:
 
 def _parse_value(raw: str) -> str:
     return raw.strip().strip("'").strip('"')
+
+
+def _parse_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def load_config(path: Path | None = None) -> Config:
@@ -163,6 +170,12 @@ def load_config(path: Path | None = None) -> Config:
             cfg.noiloi_bin = expand_path(value)
         elif key == "step_interval_min":
             cfg.step_interval_min = int(value)
+        elif key == "off_on_sleep":
+            cfg.off_on_sleep = _parse_bool(value)
+        elif key == "off_on_shutdown":
+            cfg.off_on_shutdown = _parse_bool(value)
+        elif key == "off_razer":
+            cfg.off_razer = _parse_bool(value)
 
     if not cfg.log_file:
         cfg.log_file = default_log_file()
