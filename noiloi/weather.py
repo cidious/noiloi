@@ -6,13 +6,20 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime
 
 from .config import Config
 
 
-def fetch_cloud_cover(cfg: Config, at: datetime) -> int | None:
-    """Return total cloud cover %% for the hour containing ``at``, or None on failure."""
+@dataclass
+class CloudForecast:
+    url: str
+    cloud_cover: int | None
+    forecast_hour: str | None = None
+
+
+def open_meteo_url(cfg: Config) -> str:
     params = urllib.parse.urlencode(
         {
             "latitude": cfg.latitude,
@@ -22,28 +29,33 @@ def fetch_cloud_cover(cfg: Config, at: datetime) -> int | None:
             "forecast_days": 1,
         }
     )
-    url = f"https://api.open-meteo.com/v1/forecast?{params}"
+    return f"https://api.open-meteo.com/v1/forecast?{params}"
+
+
+def fetch_cloud_cover(cfg: Config, at: datetime) -> CloudForecast:
+    """Return cloud cover for the hour containing ``at`` (None cover on failure)."""
+    url = open_meteo_url(cfg)
     try:
         with urllib.request.urlopen(url, timeout=20) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
-        return None
+        return CloudForecast(url=url, cloud_cover=None)
 
     times = data.get("hourly", {}).get("time") or []
     covers = data.get("hourly", {}).get("cloud_cover") or []
     if not times or not covers or len(times) != len(covers):
-        return None
+        return CloudForecast(url=url, cloud_cover=None)
 
     target = at.strftime("%Y-%m-%dT%H:00")
     for t, cover in zip(times, covers):
         if t == target:
-            return int(cover)
-    # Fallback: nearest hour key
+            return CloudForecast(url=url, cloud_cover=int(cover), forecast_hour=t)
+
     hour_prefix = at.strftime("%Y-%m-%dT%H")
     for t, cover in zip(times, covers):
         if t.startswith(hour_prefix):
-            return int(cover)
-    return None
+            return CloudForecast(url=url, cloud_cover=int(cover), forecast_hour=t)
+    return CloudForecast(url=url, cloud_cover=None)
 
 
 def start_offset_minutes(cfg: Config, cloud_cover: int | None) -> tuple[int, str]:

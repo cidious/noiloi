@@ -77,6 +77,7 @@ See [`noiloi.conf.example`](noiloi.conf.example). Important keys:
 | `noiloi_bin` | Optional absolute path Cronicle scripts should `exec`; defaults to the running executable |
 | `log_file` | Optional; defaults to `~/.local/state/noiloi/noiloi.log` |
 | `off_on_sleep` / `off_on_shutdown` / `off_razer` | Lamp-off hooks for sleep/session exit (see below) |
+| `verbose_log` | `1`/`0` — extra daily/weather/step detail in the log file |
 
 Do not commit `noiloi.conf` (API keys). It is gitignored.
 

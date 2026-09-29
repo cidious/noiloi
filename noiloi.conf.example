@@ -30,3 +30,6 @@ log_file = ~/.local/state/noiloi/noiloi.log
 off_on_sleep = 1
 off_on_shutdown = 1
 off_razer = 1
+
+# Extra detail in the log file for daily / weather / step jobs
+verbose_log = 0

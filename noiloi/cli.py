@@ -22,6 +22,15 @@ def _day_prefix(day: datetime) -> str:
     return day.strftime("%Y%m%d")
 
 
+def _step_position(temp: int) -> tuple[int, int] | None:
+    """Return 1-based (current, total) for a known Kelvin step, else None."""
+    total = len(COLOR_STEPS)
+    for idx, (ct, _) in enumerate(COLOR_STEPS):
+        if ct == temp:
+            return idx + 1, total
+    return None
+
+
 def cmd_daily(cfg: Config) -> int:
     cfg.require_location()
     cfg.require_cronicle()
@@ -30,8 +39,15 @@ def cmd_daily(cfg: Config) -> int:
     sunset = today_sunset(cfg, on=now.date())
     weather_at = sunset - timedelta(minutes=cfg.weather_lead_min)
     day = _day_prefix(sunset)
+    lead = sunset - weather_at
 
     log(cfg, f"daily: sunset={sunset.isoformat()} weather_at={weather_at.isoformat()}")
+    if cfg.verbose_log:
+        log(
+            cfg,
+            f"daily: sunset−weather_at={lead} "
+            f"({int(lead.total_seconds() // 60)}m, weather_lead_min={cfg.weather_lead_min})",
+        )
 
     if weather_at <= now:
         log(cfg, "daily: weather time already passed; running weather scheduling immediately")
@@ -69,14 +85,25 @@ def cmd_weather(cfg: Config, for_date=None, *, self_delete: bool = True) -> int:
     sunset = today_sunset(cfg, on=day_date)
     day = _day_prefix(sunset)
 
-    cloud = fetch_cloud_cover(cfg, sunset)
-    offset, reason = start_offset_minutes(cfg, cloud)
+    forecast = fetch_cloud_cover(cfg, sunset)
+    offset, reason = start_offset_minutes(cfg, forecast.cloud_cover)
     start = sunset - timedelta(minutes=offset)
     log(
         cfg,
-        f"weather: sunset={sunset.isoformat()} cloud={cloud} "
+        f"weather: sunset={sunset.isoformat()} cloud={forecast.cloud_cover} "
         f"offset=-{offset}m ({reason}) start={start.isoformat()}",
     )
+    if cfg.verbose_log:
+        log(cfg, f"weather: url={forecast.url}")
+        hour = forecast.forecast_hour or sunset.strftime("%Y-%m-%dT%H:00")
+        cover = "unavailable" if forecast.cloud_cover is None else f"{forecast.cloud_cover}%"
+        log(cfg, f"weather: forecast before sunset hour={hour} cloud_cover={cover}")
+        log(
+            cfg,
+            f"weather: first step offset=-{offset}m "
+            f"(threshold={cfg.cloud_threshold}%, clear={cfg.offset_clear_min}m, "
+            f"overcast={cfg.offset_overcast_min}m) reason={reason}",
+        )
 
     api = Cronicle(cfg)
     removed = api.delete_by_title_prefix(f"noiloi-step-{day}-")
@@ -116,7 +143,15 @@ def cmd_weather(cfg: Config, for_date=None, *, self_delete: bool = True) -> int:
 
 def cmd_step(cfg: Config, temp: int, razer: str | None) -> int:
     cfg.require_devices()
-    log(cfg, f"step: ct={temp} razer={razer or '-'}")
+    pos = _step_position(temp)
+    if cfg.verbose_log and pos is not None:
+        current, total = pos
+        log(
+            cfg,
+            f"step: {current}/{total} ct={temp} razer={razer or '-'}",
+        )
+    else:
+        log(cfg, f"step: ct={temp} razer={razer or '-'}")
     errors = set_yeelight_ct(cfg, temp)
     for err in errors:
         log(cfg, f"step: yeelight {err}")

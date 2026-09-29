@@ -87,6 +87,7 @@ class Config:
     off_on_sleep: bool = True
     off_on_shutdown: bool = True
     off_razer: bool = True
+    verbose_log: bool = False
 
     def require_location(self) -> None:
         if self.latitude is None or self.longitude is None:
@@ -176,6 +177,8 @@ def load_config(path: Path | None = None) -> Config:
             cfg.off_on_shutdown = _parse_bool(value)
         elif key == "off_razer":
             cfg.off_razer = _parse_bool(value)
+        elif key == "verbose_log":
+            cfg.verbose_log = _parse_bool(value)
 
     if not cfg.log_file:
         cfg.log_file = default_log_file()
