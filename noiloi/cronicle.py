@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
+from datetime import date
 from typing import Any
 
 from .config import Config
+
+# noiloi-weather-YYYYMMDD | noiloi-step-YYYYMMDD-NN (+ heliolamp legacy)
+_ONESHOT_DAY_RE = re.compile(
+    r"^(?:noiloi|heliolamp)-(?:weather|step)-(\d{8})(?:-\d{2})?$"
+)
 
 
 class CronicleError(RuntimeError):
@@ -72,6 +79,24 @@ class Cronicle:
             if event_id:
                 self.delete_event(str(event_id))
                 deleted += 1
+        return deleted
+
+    def delete_past_oneshots(self, today: date) -> int:
+        """Delete one-shot weather/step events scheduled for days before ``today``."""
+        today_s = today.strftime("%Y%m%d")
+        deleted = 0
+        for row in self.get_schedule():
+            title = str(row.get("title", ""))
+            match = _ONESHOT_DAY_RE.match(title)
+            if not match:
+                continue
+            if match.group(1) >= today_s:
+                continue
+            event_id = row.get("id")
+            if not event_id:
+                continue
+            self.delete_event(str(event_id))
+            deleted += 1
         return deleted
 
     def shell_event(

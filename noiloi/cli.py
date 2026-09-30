@@ -49,14 +49,17 @@ def cmd_daily(cfg: Config) -> int:
             f"({int(lead.total_seconds() // 60)}m, weather_lead_min={cfg.weather_lead_min})",
         )
 
+    api = Cronicle(cfg)
+    past = api.delete_past_oneshots(now.date())
+    if past:
+        log(cfg, f"daily: removed {past} past one-shot event(s)")
+
     if weather_at <= now:
         log(cfg, "daily: weather time already passed; running weather scheduling immediately")
         return cmd_weather(cfg, for_date=now.date(), self_delete=False)
 
-    api = Cronicle(cfg)
     removed = api.delete_by_title_prefix(f"noiloi-weather-{day}")
     removed += api.delete_by_title_prefix(f"noiloi-step-{day}-")
-    # Clean legacy heliolamp titles if present
     removed += api.delete_by_title_prefix(f"heliolamp-weather-{day}")
     removed += api.delete_by_title_prefix(f"heliolamp-step-{day}-")
     if removed:
