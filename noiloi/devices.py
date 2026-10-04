@@ -28,6 +28,14 @@ def yeelight_reachable(ip: str, timeout: float = 1.0) -> bool:
         return False
 
 
+def razer_reachable(host: str, port: int, timeout: float = 1.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
 def set_yeelight_ct(cfg: Config, temp: int, ips: Iterable[str] | None = None) -> list[str]:
     """Power on and set color temperature. Returns list of errors (empty if all ok)."""
     errors: list[str] = []

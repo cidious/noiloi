@@ -9,8 +9,9 @@ Scheduling uses [Cronicle](https://github.com/jhuckaby/Cronicle) one-shot events
 ## How it works
 
 1. **`noiloi daily`** (Cronicle, every day at noon) — compute today’s sunset, create a one-shot weather job ~50 minutes before sunset.
-2. **`noiloi weather`** — fetch Open-Meteo `cloud_cover` for the sunset hour; if cover ≥ threshold, start 40 minutes early, otherwise 10 minutes; create nine one-shot step jobs (15 minutes apart); delete the weather event.
+2. **`noiloi weather`** — fetch Open-Meteo `cloud_cover` for the sunset hour; if cover ≥ threshold, start 40 minutes early, otherwise 10 minutes; create nine one-shot step jobs (15 minutes apart); if the machine wakes up late, apply the current step immediately; delete the weather event.
 3. **`noiloi step <kelvin> [hex]`** — set Yeelight CT (and optional Razer color); delete the step event.
+4. **`noiloi` login catch-up** — a user systemd timer reruns `noiloi daily` shortly after login so an evening power-on still schedules the lamps and keyboard color ramp.
 
 ```text
 noon ──► daily ──► weather@sunset−50m ──► steps@start+N×15m
@@ -76,7 +77,7 @@ See [`noiloi.conf.example`](noiloi.conf.example). Important keys:
 | `yeelight_ips` | Space-separated bulb IPs (required for `step`) |
 | `noiloi_bin` | Optional absolute path Cronicle scripts should `exec`; defaults to the running executable |
 | `log_file` | Optional; defaults to `~/.local/state/noiloi/noiloi.log` |
-| `off_on_sleep` / `off_on_shutdown` / `off_razer` | Lamp-off hooks for sleep/session exit (see below) |
+| `off_on_sleep` / `off_on_shutdown` / `run_on_startup` / `off_razer` | Lamp-off hooks for sleep/session exit, plus a login catch-up timer (see below) |
 | `verbose_log` | `1`/`0` — extra daily/weather/step detail in the log file |
 
 Do not commit `noiloi.conf` (API keys). It is gitignored.
@@ -88,9 +89,12 @@ noiloi daily          # schedule today’s weather one-shot
 noiloi weather        # fetch clouds, schedule color steps, self-delete
 noiloi step 4100 a34410   # one CT (+ optional Razer hex)
 noiloi off            # turn Yeelight off (and Razer to black if enabled)
+noiloi status         # show config, Cronicle schedule, device, and hook status
 noiloi setup-daily    # create/replace permanent noon Cronicle event
-noiloi setup-power    # install systemd --user sleep/shutdown off hooks
+noiloi setup-power    # install systemd --user sleep/shutdown/login hooks
 ```
+
+`noiloi status` is the quickest way to diagnose the "turned on in the evening but nothing happened" case: it shows whether the noon Cronicle job exists, whether today’s weather/step jobs are present, whether the login catch-up timer is installed, and whether the Yeelight/Razer endpoints are reachable.
 
 ### Sleep / shutdown off
 
@@ -100,6 +104,7 @@ Conf keys (defaults on):
 |-----|---------|
 | `off_on_sleep` | `1`/`0` — run `noiloi off` before suspend (`sleep.target`) |
 | `off_on_shutdown` | `1`/`0` — run `noiloi off` on session exit (`exit.target`) |
+| `run_on_startup` | `1`/`0` — run `noiloi daily` shortly after login to catch up evening boots |
 | `off_razer` | `1`/`0` — also set Razer backlight to `000000` |
 
 Then:
@@ -109,7 +114,7 @@ noiloi setup-power
 systemctl --user daemon-reload   # if needed
 ```
 
-This writes `~/.config/systemd/user/noiloi-sleep.service` and `noiloi-shutdown.service`. Set a key to `0` and re-run `setup-power` to disable/remove that hook. Ensure a user systemd session is lingering or you are logged in graphically so `--user` units run on sleep.
+This writes `~/.config/systemd/user/noiloi-sleep.service`, `noiloi-shutdown.service`, `noiloi-startup.service`, and `noiloi-startup.timer`. Set `off_on_sleep`, `off_on_shutdown`, or `run_on_startup` to `0` and re-run `setup-power` to disable/remove that hook. Ensure a user systemd session is lingering or you are logged in graphically so `--user` units run on sleep and login.
 
 ## Color ramp
 

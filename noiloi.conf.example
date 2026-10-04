@@ -26,9 +26,10 @@ razer_port = 13000
 log_file = ~/.local/state/noiloi/noiloi.log
 # noiloi_bin =
 
-# Turn lamps off before sleep / session exit (used by: noiloi setup-power)
+# Turn lamps off before sleep / session exit, and catch up on login (used by: noiloi setup-power)
 off_on_sleep = 1
 off_on_shutdown = 1
+run_on_startup = 1
 off_razer = 1
 
 # Extra detail in the log file for daily / weather / step jobs

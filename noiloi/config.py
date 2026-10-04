@@ -86,6 +86,7 @@ class Config:
     step_interval_min: int = 15
     off_on_sleep: bool = True
     off_on_shutdown: bool = True
+    run_on_startup: bool = True
     off_razer: bool = True
     verbose_log: bool = False
 
@@ -175,6 +176,8 @@ def load_config(path: Path | None = None) -> Config:
             cfg.off_on_sleep = _parse_bool(value)
         elif key == "off_on_shutdown":
             cfg.off_on_shutdown = _parse_bool(value)
+        elif key == "run_on_startup":
+            cfg.run_on_startup = _parse_bool(value)
         elif key == "off_razer":
             cfg.off_razer = _parse_bool(value)
         elif key == "verbose_log":
