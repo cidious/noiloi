@@ -11,6 +11,8 @@ cronicle_category = general
 cronicle_plugin = shellplug
 cronicle_target = neon
 
+# Cloud cover source: metno (default, MET Norway) | openmeteo | auto
+weather_provider = metno
 # Cloud cover %% at sunset hour at or above this => overcast offset
 cloud_threshold = 70
 # Minutes before sunset to start the color ramp

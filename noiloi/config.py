@@ -89,6 +89,8 @@ class Config:
     run_on_startup: bool = True
     off_razer: bool = True
     verbose_log: bool = False
+    # metno (default) | openmeteo | auto (metno then openmeteo)
+    weather_provider: str = "metno"
 
     def require_location(self) -> None:
         if self.latitude is None or self.longitude is None:
@@ -182,6 +184,8 @@ def load_config(path: Path | None = None) -> Config:
             cfg.off_razer = _parse_bool(value)
         elif key == "verbose_log":
             cfg.verbose_log = _parse_bool(value)
+        elif key == "weather_provider":
+            cfg.weather_provider = value.strip().lower()
 
     if not cfg.log_file:
         cfg.log_file = default_log_file()

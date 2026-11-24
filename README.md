@@ -4,19 +4,19 @@ Sunset-driven lighting for **Yeelight** bulbs and a local **Razer** backlight se
 
 Before sunset it turns lamps to a neutral color temperature, then steps warmer over ~2 hours (aligned with a KDE Night Color–style ramp). On overcast days the ramp starts earlier.
 
-Scheduling uses [Cronicle](https://github.com/jhuckaby/Cronicle) one-shot events (no long-running wait processes). Sunset is computed with [astral](https://astral.readthedocs.io/). Cloud cover comes from [Open-Meteo](https://open-meteo.com/) (no API key).
+Scheduling uses [Cronicle](https://github.com/jhuckaby/Cronicle) one-shot events (no long-running wait processes). Sunset is computed with [astral](https://astral.readthedocs.io/). Cloud cover comes from [MET Norway](https://api.met.no/) by default (no API key), with optional [Open-Meteo](https://open-meteo.com/) fallback.
 
 ## How it works
 
 1. **`noiloi daily`** (Cronicle, every day at noon) — compute today’s sunset, create a one-shot weather job ~50 minutes before sunset.
-2. **`noiloi weather`** — fetch Open-Meteo `cloud_cover` for the sunset hour; if cover ≥ threshold, start 40 minutes early, otherwise 10 minutes; create nine one-shot step jobs (15 minutes apart); if the machine wakes up late, apply the current step immediately; delete the weather event.
+2. **`noiloi weather`** — fetch cloud cover for the sunset hour (MET Norway / Open-Meteo); if cover ≥ threshold, start 40 minutes early, otherwise 10 minutes; create nine one-shot step jobs (15 minutes apart); if the machine wakes up late, apply the current step immediately; delete the weather event.
 3. **`noiloi step <kelvin> [hex]`** — set Yeelight CT (and optional Razer color); delete the step event.
 4. **`noiloi` login catch-up** — a user systemd timer reruns `noiloi daily` shortly after login so an evening power-on still schedules the lamps and keyboard color ramp.
 
 ```text
 noon ──► daily ──► weather@sunset−50m ──► steps@start+N×15m
                       │                      │
-                   Open-Meteo            Yeelight + Razer
+                   MET Norway            Yeelight + Razer
 ```
 
 ## Requirements
@@ -68,9 +68,10 @@ See [`noiloi.conf.example`](noiloi.conf.example). Important keys:
 
 | Key | Meaning |
 |-----|---------|
-| `latitude` / `longitude` / `timezone` | Observer for astral + Open-Meteo (required) |
+| `latitude` / `longitude` / `timezone` | Observer for astral + weather (required) |
 | `cronicle_url` / `cronicle_api_key` | Cronicle REST API |
 | `cronicle_category` / `plugin` / `target` | Must match your Cronicle setup (`target` required) |
+| `weather_provider` | `metno` (default), `openmeteo`, or `auto` |
 | `cloud_threshold` | Cloud cover % → overcast (default `70`) |
 | `offset_clear_min` / `offset_overcast_min` | Minutes before sunset to start |
 | `weather_lead_min` | When to fetch weather (default `50`) |
@@ -136,7 +137,7 @@ This writes `~/.config/systemd/user/noiloi-sleep.service`, `noiloi-shutdown.serv
 noiloi/
   config.py      # conf loader + color table
   sun.py         # astral sunset
-  weather.py     # Open-Meteo
+  weather.py     # MET Norway (+ Open-Meteo fallback)
   cronicle.py    # REST client
   devices.py     # Yeelight + Razer TCP
   cli.py         # entrypoint commands
@@ -153,5 +154,6 @@ Add a license of your choice before publishing; none is set in this tree yet.
 ## Credits
 
 - [astral](https://github.com/sffjunkie/astral) — solar times  
-- [Open-Meteo](https://open-meteo.com/) — cloud cover forecast  
+- [MET Norway](https://api.met.no/) — primary cloud cover forecast  
+- [Open-Meteo](https://open-meteo.com/) — optional cloud cover fallback  
 - [Cronicle](https://github.com/jhuckaby/Cronicle) — job scheduling  

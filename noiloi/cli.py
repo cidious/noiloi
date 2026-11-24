@@ -292,6 +292,7 @@ def cmd_weather(cfg: Config, for_date=None, *, self_delete: bool = True) -> int:
     log(
         cfg,
         f"weather: sunset={sunset.isoformat()} cloud={forecast.cloud_cover} "
+        f"provider={forecast.provider or cfg.weather_provider} "
         f"offset=-{offset}m ({reason}) start={start.isoformat()}",
     )
     if cfg.verbose_log:
@@ -299,6 +300,8 @@ def cmd_weather(cfg: Config, for_date=None, *, self_delete: bool = True) -> int:
         hour = forecast.forecast_hour or sunset.strftime("%Y-%m-%dT%H:00")
         cover = "unavailable" if forecast.cloud_cover is None else f"{forecast.cloud_cover}%"
         log(cfg, f"weather: forecast before sunset hour={hour} cloud_cover={cover}")
+        if forecast.error:
+            log(cfg, f"weather: provider note: {forecast.error}")
         log(
             cfg,
             f"weather: first step offset=-{offset}m "
